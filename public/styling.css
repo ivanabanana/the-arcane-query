@@ -1,0 +1,221 @@
+@import url("https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Jim+Nightshade&display=swap");
+
+:root {
+  --bg: #ffffff;
+  --muted: #6b7280;
+  --accent: #2d2c25;
+  --card-border: #e6e6e6;
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --maxw: 980px;
+  --gap: 0.75rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Body + base font */
+body {
+  font-family: "Aref Ruqaa", serif;
+  color: #2d2c25;
+  margin: 0;
+  background: linear-gradient(180deg, #f8fafc, #ffffff);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.3;
+}
+
+/* Header layout */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  font-weight: 400;
+}
+
+h1 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+/* Main container */
+.container {
+  max-width: var(--maxw);
+  margin: 1rem auto;
+  padding: 0 1rem;
+}
+
+/* Card layout */
+.card {
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+  padding: 1rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 1rem;
+}
+
+/* Form layout */
+.form {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Inputs */
+.form input[type="text"],
+.form input[type="number"],
+select {
+  flex: 1;
+  padding: 0.6rem;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  min-width: 140px;
+  outline: none;
+  color: #111827;
+  background: #fff;
+}
+
+/* Button */
+.btn {
+  padding: 0.45rem 0.65rem;
+  border-radius: 8px;
+  border: none;
+  background-color: var(--accent);
+  color: white;
+  cursor: pointer;
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+
+/* Small hover + active, to make sure that we know that the buttons are interactive */
+.btn:hover,
+.small:hover {
+  transform: translateY(-1px);
+}
+.btn:active,
+.small:active {
+  transform: translateY(0);
+}
+
+.btn {
+  margin: 0;
+}
+
+/* Error / notice */
+.notice {
+  color: #b91c1c;
+  margin-top: 0.4rem;
+  font-size: 0.95rem;
+}
+
+/* Product grid */
+.products {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--gap);
+  margin-top: 0.8rem;
+}
+
+/* Product card */
+.product {
+  padding: 0.7rem;
+  border-radius: 8px;
+  background: linear-gradient(#fff, #fbfdff);
+  border: 1px solid #f1f5f9;
+}
+
+/* Product text */
+.p-name {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+  /* For keeping long names tidy */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.meta {
+  font-size: 0.88rem;
+  color: var(--muted);
+  margin-top: 0.4rem;
+}
+
+.p-category {
+  margin-top: 0.35rem;
+  color: #374151;
+}
+
+.p-supplier {
+  font-size: 0.85rem;
+  color: #4b5563;
+  margin-top: 0.25rem;
+}
+
+/* Actions */
+.actions {
+  margin-top: 0.6rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.input-inline {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.upd-qty {
+  width: 76px;
+  padding: 0.35rem;
+  border-radius: 6px;
+  border: 1px solid #e6e6e6;
+}
+
+/* Small button style - In the button cards */
+.small {
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 0;
+  background: var(--accent);
+  cursor: pointer;
+  color: white;
+}
+
+/* Secondary look for delete, easier to distinguish between the two */
+.small.secondary {
+  background: transparent;
+  border: 1px solid #b91c1c; /* fixed comma typo */
+  color: #b91c1c;
+}
+
+/* Small decorative dot */
+.dot {
+  margin: 0 0.35rem;
+  color: #9ca3af;
+}
+
+.empty {
+  color: #374151;
+  padding: 0.6rem;
+}
+
+/* Responsive thingies */
+@media (max-width: 520px) {
+  .form input[type="text"],
+  .form input[type="number"],
+  select {
+    min-width: 120px;
+  }
+  .p-name {
+    font-size: 0.98rem;
+  }
+}

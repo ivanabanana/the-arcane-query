@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>The Arcane Query</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="styling.css" />
+  </head>
+
+  <body>
+    <!-- Header! -->
+    <header class="header">
+      <h1>The Arcane Query</h1>
+
+      <!-- Refresh button to refresh the inventory -->
+      <div>
+        <button id="refreshBtn" class="btn">Refresh Inventory</button>
+      </div>
+    </header>
+
+    <!-- Main layout container -->
+    <main class="container">
+      <!-- Add product form -->
+      <section class="card">
+        <h2>Add product</h2>
+        <form id="addForm" class="form">
+          <input id="name" type="text" placeholder="Name" required />
+          <input
+            id="quantity"
+            type="number"
+            placeholder="Quantity"
+            min="0"
+            value="1"
+          />
+          <input
+            id="price"
+            type="number"
+            placeholder="Price"
+            min="0"
+            step="1"
+          />
+          <!-- Category dropdown -->
+          <select id="category" name="category" aria-label="Category">
+            <option value="">Select category</option>
+            <option value="healingrestoration">Healing & Restoration</option>
+            <option value="enchpotions">Enhancement Potions</option>
+            <option value="protection-warding">Protection & Warding</option>
+            <option value="transformation-shapeshifting">
+              Transformation & Shapeshifting
+            </option>
+            <option value="elepotions">Elemental Potions</option>
+            <option value="illusion-mind">Illusion & Mind</option>
+            <option value="forbidden-cursed">Forbidden & Cursed</option>
+            <option value="other">Other</option>
+          </select>
+          <!-- Supplier dropdown, which we populate with JavaScript! -->
+          <select id="supplierSelect">
+            <option value="">No supplier</option>
+          </select>
+          <!-- Submit button -->
+          <button type="submit" class="btn">Add</button>
+          <!-- Success/error message (we hide until needed)-->
+          <div id="formMsg" class="notice" aria-live="polite" hidden></div>
+        </form>
+      </section>
+
+      <!-- Section that displays all of our products -->
+      <section class="card">
+        <h2>Products</h2>
+
+        <!-- Container where product cards will be inserted -->
+        <div id="products" class="products"></div>
+
+        <!-- Message shown when there are no products -->
+        <div id="productsEmpty" class="empty" hidden>No products yet.</div>
+      </section>
+    </main>
+
+    <!-- Product card template (cloned in JavaScript) -->
+    <template id="productTpl">
+      <div class="product">
+        <strong class="p-name"></strong>
+
+        <!-- Meta information about the product -->
+        <div class="meta">
+          <span>Qty: <span class="p-qty"></span></span>
+          <span class="dot">·</span>
+          <span>Price: <span class="p-price"></span></span>
+          <div class="p-category"></div>
+        </div>
+
+        <!-- Buttons for updating and deleting a product -->
+        <div class="actions">
+          <div class="input-inline">
+            <!-- Input for updating quantity -->
+            <input class="upd-qty" type="number" />
+            <button class="small updateBtn">Update</button>
+          </div>
+
+          <!-- Delete button -->
+          <button class="small secondary deleteBtn">Delete</button>
+        </div>
+      </div>
+    </template>
+
+    <script type="module" src="script.js"></script>
+  </body>
+</html>
