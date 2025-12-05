@@ -4,12 +4,12 @@ This assignment was for the course Backend 1 at EC. The goal was to build an inv
 
 ## Table of Contents
 
-- [The Assignment] (#the-assignment)
-- [Tech Stack] (#tech-stack)
-- [How to Run the Project] (#run-project)
-- [API Endpoints] (#API)
-- [Lessons Learned] (#lessons-learned)
-- [Reflection] (#reflection)
+- [The Assignment](#the-assignment)
+- [Tech Stack](#tech-stack)
+- [How to Run the Project](#run-project)
+- [API Endpoints](#API)
+- [Lessons Learned](#lessons-learned)
+- [Reflection](#reflection)
 
 ## The Assignment
 
