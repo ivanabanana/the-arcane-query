@@ -35,7 +35,7 @@ async function api(path, opts = {}) {
       return { ok: res.ok, status: res.status, data: text };
     }
   } catch (networkError) {
-    // Network or other fetch error --> return a consistent object
+    // Network or other fetch error — return a consistent object
     return {
       ok: false,
       status: 0,
@@ -46,21 +46,44 @@ async function api(path, opts = {}) {
 
 // loadSuppliers fills the supplier dropdown in the add product form
 async function loadSuppliers() {
-  if (!supplierSelect) return;
-  supplierSelect.innerHTML = '<option value="">No supplier</option>';
-  const res = await api("/suppliers", { method: "GET" });
-  if (!res.ok) {
-    // Silently ignore
-    // If suppliers can't be loaded, user can still add products without suppliers
+  // Make sure the select exists before doing anything
+  if (!supplierSelect) {
+    console.warn("No #supplierSelect element found in DOM");
     return;
   }
-  if (!Array.isArray(res.data)) return;
+
+  // Reset to a simple default option
+  supplierSelect.innerHTML = '<option value="">No supplier</option>';
+
+  const res = await api("/suppliers", { method: "GET" });
+
+  // Log the response for debugging — check the browser console if options don't appear
+  console.log("loadSuppliers response:", res);
+
+  if (!res.ok) {
+    // silently ignore — user can still add products without suppliers
+    return;
+  }
+
+  const suppliers = res.data;
+  if (!Array.isArray(suppliers) || suppliers.length === 0) {
+    // No suppliers returned
+    return;
+  }
 
   // Add each supplier as an option
-  res.data.forEach((s) => {
+  suppliers.forEach((s) => {
+    // Make sure we have sensible values to show
+    const id =
+      s && (s.id ?? s.ID ?? s.Id) != null ? String(s.id ?? s.ID ?? s.Id) : "";
+    const name =
+      s && (s.name ?? s.Name ?? s.company)
+        ? String(s.name ?? s.Name ?? s.company)
+        : "(no name)";
+
     const opt = document.createElement("option");
-    opt.value = s.id; // Numeric ID from DB
-    opt.textContent = s.name;
+    opt.value = id; // string value
+    opt.textContent = name;
     supplierSelect.appendChild(opt);
   });
 }
@@ -95,7 +118,7 @@ async function loadProducts() {
       ? p.quantity
       : "—";
 
-    // Price --> show number without decimals if it's a valid number
+    // Price: show number without decimals if it's a valid number
     const priceNum = Number(p.price);
     $(".p-price", wrap).textContent = Number.isFinite(priceNum)
       ? priceNum
@@ -113,7 +136,7 @@ async function loadProducts() {
     const updateBtn = $(".updateBtn", wrap);
     if (updateBtn && updQty) {
       updateBtn.addEventListener("click", async () => {
-        updateBtn.disabled = true; // simple UX --> To prevent double clicks
+        updateBtn.disabled = true;
         const newQty = parseInt(updQty.value, 10);
         if (!Number.isFinite(newQty)) {
           alert("Please enter a valid quantity");
@@ -136,7 +159,7 @@ async function loadProducts() {
       });
     }
 
-    // Delete button --> deletes product and removes card
+    // Delete button - deletes product and removes card
     const deleteBtn = $(".deleteBtn", wrap);
     if (deleteBtn) {
       deleteBtn.addEventListener("click", async () => {
@@ -188,7 +211,7 @@ if (addForm) {
     const price = priceRaw === "" ? null : parseFloat(priceRaw);
     const safePrice = Number.isFinite(price) ? price : null;
 
-    const category = catEl?.value?.trim() || "";
+    const category = catEl?.selectedOptions?.[0]?.textContent?.trim() || "";
 
     const supplier_id =
       supplierSelect && supplierSelect.value
@@ -227,10 +250,10 @@ if (addForm) {
   });
 }
 
-// Refresh button (if present)
+// refresh button (if present)
 if (refreshBtn) refreshBtn.addEventListener("click", loadProducts);
 
-// Startup --> Run loads in a small async function so this file works without type="module"
+// Startup: run loads in a small async function so this file works without type="module"
 (async function init() {
   await loadSuppliers();
   await loadProducts();
