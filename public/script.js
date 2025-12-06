@@ -35,7 +35,7 @@ async function api(path, opts = {}) {
       return { ok: res.ok, status: res.status, data: text };
     }
   } catch (networkError) {
-    // Network or other fetch error — return a consistent object
+    // Network or other fetch error --> return a consistent object
     return {
       ok: false,
       status: 0,
@@ -57,11 +57,10 @@ async function loadSuppliers() {
 
   const res = await api("/suppliers", { method: "GET" });
 
-  // Log the response for debugging — check the browser console if options don't appear
   console.log("loadSuppliers response:", res);
 
   if (!res.ok) {
-    // silently ignore — user can still add products without suppliers
+    // silently ignore --> user can still add products without suppliers
     return;
   }
 
@@ -132,7 +131,7 @@ async function loadProducts() {
     if (updQty)
       updQty.value = Number.isFinite(Number(p.quantity)) ? p.quantity : 0;
 
-    // Update button - sends PUT /products/:id
+    // Update button --> sends PUT /products/:id
     const updateBtn = $(".updateBtn", wrap);
     if (updateBtn && updQty) {
       updateBtn.addEventListener("click", async () => {
@@ -159,7 +158,7 @@ async function loadProducts() {
       });
     }
 
-    // Delete button - deletes product and removes card
+    // Delete button --> deletes product and removes card
     const deleteBtn = $(".deleteBtn", wrap);
     if (deleteBtn) {
       deleteBtn.addEventListener("click", async () => {
