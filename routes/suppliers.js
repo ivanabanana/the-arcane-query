@@ -1,6 +1,6 @@
 // routes/suppliers.js
 
-// Importing express so I can create a router for all supplier-related routies
+// Importing express so I can create a router for all supplier-related routes
 import express from "express";
 // Importing the supabase client so I can talk to my database
 import { supabase } from "../db/index.js";
@@ -8,7 +8,7 @@ import { supabase } from "../db/index.js";
 const router = express.Router();
 
 // GET /suppliers
-//Returns all suppliers
+// Returns all suppliers
 router.get("/", async (req, res) => {
   try {
     // Getting all suppliers from the "suppliers" table in the database
@@ -25,10 +25,38 @@ router.get("/", async (req, res) => {
   }
 });
 
+// GET /suppliers/:id/products
+// Returns all products belonging to a supplier
+router.get("/:id/products", async (req, res) => {
+  const id = Number(req.params.id);
+  // Validate id
+  if (!Number.isFinite(id)) {
+    return res.status(400).json({ error: "Invalid supplier id" });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("supplier_id", id);
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message || "DB error" });
+  }
+});
+
 // GET /suppliers/:id
 // Gets one supplier and also returns how many products they have
 router.get("/:id", async (req, res) => {
   const id = Number(req.params.id);
+  // Validate id
+  if (!Number.isFinite(id)) {
+    return res.status(400).json({ error: "Invalid supplier id" });
+  }
+
   try {
     // I select the supplier and also the related products
     // Supabase automatically loads them if the relation exists
@@ -37,16 +65,13 @@ router.get("/:id", async (req, res) => {
       .select("id, name, contact_person, email, phone, country, products(id)") // products relation
       .eq("id", id)
       .single();
-    // If the supplier doesn't exist, I return a 404 error
+
+    // If the supplier doesn't exist, return 404
     if (error) {
-      if (
-        error.code === "PGRST116" ||
-        error.message.includes("Could not find")
-      ) {
-        return res.status(404).json({ error: "Supplier not found" });
-      }
-      throw error;
+      console.error(error);
+      return res.status(404).json({ error: "Supplier not found" });
     }
+
     // Calculate the number of products for this supplier
     const product_count = Array.isArray(data.products)
       ? data.products.length
@@ -68,11 +93,14 @@ router.post("/", async (req, res) => {
   try {
     const { name, contact_person, email, phone, country } = req.body;
     // Basic check so we make sure name is provided
-    if (!name) return res.status(400).json({ error: "Name required" });
+    if (!name || !String(name).trim())
+      return res.status(400).json({ error: "Name required" });
 
     const { data, error } = await supabase
       .from("suppliers")
-      .insert([{ name, contact_person, email, phone, country }])
+      .insert([
+        { name: String(name).trim(), contact_person, email, phone, country },
+      ])
       .select()
       .single();
 
@@ -89,6 +117,11 @@ router.post("/", async (req, res) => {
 // Here we update an existing supplier
 router.put("/:id", async (req, res) => {
   const id = Number(req.params.id);
+  // Validate id
+  if (!Number.isFinite(id)) {
+    return res.status(400).json({ error: "Invalid supplier id" });
+  }
+
   try {
     // Only update fields that the user sends
     const { name, contact_person, email, phone, country } = req.body;
@@ -103,11 +136,14 @@ router.put("/:id", async (req, res) => {
     // If no fields to update, return 400
     if (Object.keys(updates).length === 0)
       return res.status(400).json({ error: "No fields to update" });
+
+    // Check supplier exists
     const { data: existing, error: findError } = await supabase
       .from("suppliers")
       .select("id")
       .eq("id", id)
       .single();
+
     if (findError || !existing)
       return res.status(404).json({ error: "Supplier not found" });
 
@@ -130,8 +166,13 @@ router.put("/:id", async (req, res) => {
 // Deletes a supplier if it has no products
 router.delete("/:id", async (req, res) => {
   const id = Number(req.params.id);
+  // Validate id
+  if (!Number.isFinite(id)) {
+    return res.status(400).json({ error: "Invalid supplier id" });
+  }
+
   try {
-    // Prevent deletion if products exist - safer default
+    // Prevent deletion if products exist --> safer default
     const { data: products, error: pErr } = await supabase
       .from("products")
       .select("id")
@@ -144,27 +185,21 @@ router.delete("/:id", async (req, res) => {
       });
     }
 
-    // Delete the supplier
-    const { error } = await supabase.from("suppliers").delete().eq("id", id);
-    if (error) throw error;
-    res.status(204).send();
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message || "DB error" });
-  }
-});
+    // Delete the supplier and return deleted rows so we can check if any row was removed
+    const { data: deleted, error } = await supabase
+      .from("suppliers")
+      .delete()
+      .eq("id", id)
+      .select();
 
-// GET /suppliers/:id/products
-// Returns all products belonging to a supplier
-router.get("/:id/products", async (req, res) => {
-  const id = Number(req.params.id);
-  try {
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .eq("supplier_id", id);
     if (error) throw error;
-    res.json(data);
+
+    // If nothing was deleted, return 404
+    if (!deleted || (Array.isArray(deleted) && deleted.length === 0)) {
+      return res.status(404).json({ error: "Supplier not found" });
+    }
+
+    res.status(204).send();
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message || "DB error" });

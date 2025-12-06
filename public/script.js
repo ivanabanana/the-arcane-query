@@ -1,6 +1,6 @@
 // public/script.js
 
-//base is empty because the API is on the same origin as the frontend
+// base is empty because the API is on the same origin as the frontend
 const base = ""; // same origin
 
 // Tiny DOM helpers to make selectors easier and shorter!
@@ -18,20 +18,29 @@ const supplierSelect = $("#supplierSelect");
 
 // API helper, wraps fetch and handles JSON, returns a consistent object
 async function api(path, opts = {}) {
-  // Always send JSON header by default
-  const res = await fetch(base + path, {
-    headers: { "Content-Type": "application/json" },
-    ...opts,
-  });
-  const text = await res.text();
   try {
+    // Only set Content-Type when we send a body
+    const headers = opts.body ? { "Content-Type": "application/json" } : {};
+    const res = await fetch(base + path, { headers, ...opts });
+    const text = await res.text();
+
+    // Try to parse JSON, but return raw text if parsing fails
+    try {
+      return {
+        ok: res.ok,
+        status: res.status,
+        data: text ? JSON.parse(text) : null,
+      };
+    } catch (e) {
+      return { ok: res.ok, status: res.status, data: text };
+    }
+  } catch (networkError) {
+    // Network or other fetch error --> return a consistent object
     return {
-      ok: res.ok,
-      status: res.status,
-      data: text ? JSON.parse(text) : null,
+      ok: false,
+      status: 0,
+      data: { error: networkError.message || "Network error" },
     };
-  } catch (e) {
-    return { ok: res.ok, status: res.status, data: text };
   }
 }
 
@@ -39,17 +48,18 @@ async function api(path, opts = {}) {
 async function loadSuppliers() {
   if (!supplierSelect) return;
   supplierSelect.innerHTML = '<option value="">No supplier</option>';
-  const { ok, status, data } = await api("/suppliers", { method: "GET" });
-  if (!ok) {
-    // silently ignore
-    //If suppliers can't be loaded, user can still add products without suppliers
+  const res = await api("/suppliers", { method: "GET" });
+  if (!res.ok) {
+    // Silently ignore
+    // If suppliers can't be loaded, user can still add products without suppliers
     return;
   }
+  if (!Array.isArray(res.data)) return;
 
   // Add each supplier as an option
-  data.forEach((s) => {
+  res.data.forEach((s) => {
     const opt = document.createElement("option");
-    opt.value = s.id; // Numberic ID from DB
+    opt.value = s.id; // Numeric ID from DB
     opt.textContent = s.name;
     supplierSelect.appendChild(opt);
   });
@@ -57,16 +67,19 @@ async function loadSuppliers() {
 
 // loadProducts fetches and displays the list of products
 async function loadProducts() {
+  if (!productsEl || !productsEmpty) return;
   productsEl.innerHTML = "";
   productsEmpty.hidden = true;
-  const { ok, status, data } = await api("/products", { method: "GET" });
+
+  const res = await api("/products", { method: "GET" });
 
   // Handle error from backend
-  if (!ok) {
-    productsEl.innerHTML = `<div style="color:#b91c1c">Failed to fetch products (status ${status})</div>`;
+  if (!res.ok) {
+    productsEl.innerHTML = `<div style="color:#b91c1c">Failed to fetch products (status ${res.status})</div>`;
     return;
   }
-  if (!data || data.length === 0) {
+  const data = res.data;
+  if (!Array.isArray(data) || data.length === 0) {
     productsEmpty.hidden = false;
     return;
   }
@@ -74,101 +87,151 @@ async function loadProducts() {
   // Create a card for each product using the template
   data.forEach((p) => {
     const node = tpl.content.cloneNode(true);
-    const wrap = node.querySelector(".product");
+    const wrap = node.querySelector(".product") || node;
 
     // Fill in product details
-    $(".p-name", wrap).textContent = p.name;
-    $(".p-qty", wrap).textContent = p.quantity;
-    $(".p-price", wrap).textContent = Number(p.price).toFixed(2);
+    $(".p-name", wrap).textContent = p.name ?? "";
+    $(".p-qty", wrap).textContent = Number.isFinite(Number(p.quantity))
+      ? p.quantity
+      : "—";
+
+    // Price --> show number without decimals if it's a valid number
+    const priceNum = Number(p.price);
+    $(".p-price", wrap).textContent = Number.isFinite(priceNum)
+      ? priceNum
+      : "—";
+
     // Show category and supplier if available
     $(".p-category", wrap).textContent =
       (p.category || "") + (p.supplier ? ` — ${p.supplier.name}` : "");
 
     const updQty = $(".upd-qty", wrap);
-    updQty.value = p.quantity ?? 0;
+    if (updQty)
+      updQty.value = Number.isFinite(Number(p.quantity)) ? p.quantity : 0;
 
     // Update button - sends PUT /products/:id
     const updateBtn = $(".updateBtn", wrap);
-    updateBtn.addEventListener("click", async () => {
-      const newQty = Number(updQty.value || 0);
-      const patch = { quantity: newQty };
-      const { ok, status, data } = await api("/products/" + p.id, {
-        method: "PUT",
-        body: JSON.stringify(patch),
+    if (updateBtn && updQty) {
+      updateBtn.addEventListener("click", async () => {
+        updateBtn.disabled = true; // simple UX --> To prevent double clicks
+        const newQty = parseInt(updQty.value, 10);
+        if (!Number.isFinite(newQty)) {
+          alert("Please enter a valid quantity");
+          updateBtn.disabled = false;
+          return;
+        }
+        const r = await api("/products/" + p.id, {
+          method: "PUT",
+          body: JSON.stringify({ quantity: newQty }),
+        });
+        updateBtn.disabled = false;
+        if (!r.ok) {
+          alert("Update failed: " + (r.data?.error || r.status));
+          return;
+        }
+
+        // Update displayed quantity
+        $(".p-qty", wrap).textContent = r.data.quantity;
+        updQty.value = r.data.quantity;
       });
-      if (!ok) {
-        alert("Update failed: " + (data?.error || status));
-        return;
-      }
+    }
 
-      // Update displayed quantity
-      $(".p-qty", wrap).textContent = data.quantity;
-      updQty.value = data.quantity;
-    });
-
-    // Delete button - deletes product and removes card
+    // Delete button --> deletes product and removes card
     const deleteBtn = $(".deleteBtn", wrap);
-    deleteBtn.addEventListener("click", async () => {
-      if (!confirm(`Delete "${p.name}"?`)) return;
-      const { ok, status, data } = await api("/products/" + p.id, {
-        method: "DELETE",
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", async () => {
+        if (!confirm(`Delete "${p.name}"?`)) return;
+        deleteBtn.disabled = true;
+        const r = await api("/products/" + p.id, { method: "DELETE" });
+        deleteBtn.disabled = false;
+        if (!r.ok) {
+          alert("Delete failed: " + (r.data?.error || r.status));
+          return;
+        }
+        wrap.remove();
+        if (productsEl.children.length === 0) productsEmpty.hidden = false;
       });
-      if (!ok && status !== 204) {
-        alert("Delete failed: " + (data?.error || status));
-        return;
-      }
-      wrap.remove();
-      if (productsEl.children.length === 0) productsEmpty.hidden = false;
-    });
+    }
 
     productsEl.appendChild(node);
   });
 }
 
 // Create product form submission
-addForm.addEventListener("submit", async (ev) => {
-  ev.preventDefault();
-  formMsg.hidden = true;
+if (addForm) {
+  addForm.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    if (formMsg) formMsg.hidden = true;
 
-  // Get form values
-  const name = $("#name").value.trim();
-  const quantity = Number($("#quantity").value || 0);
-  const price = Number($("#price").value || 0);
-  const category = $("#category").value.trim();
+    // Get form values and validate BEFORE sending request
+    const nameEl = $("#name");
+    const qtyEl = $("#quantity");
+    const priceEl = $("#price");
+    const catEl = $("#category");
 
-  const supplier_id = supplierSelect.value
-    ? Number(supplierSelect.value)
-    : null;
+    const name = nameEl?.value?.trim() || "";
+    if (!name) {
+      if (formMsg) {
+        formMsg.textContent = "Name is required";
+        formMsg.hidden = false;
+      } else {
+        alert("Name is required");
+      }
+      return;
+    }
 
-  const { ok, status, data } = await api("/products", {
-    method: "POST",
-    body: JSON.stringify({ name, quantity, price, category, supplier_id }),
+    // Parse numbers safely
+    const quantity = parseInt(qtyEl?.value, 10);
+    const safeQuantity = Number.isFinite(quantity) ? quantity : 0;
+
+    const priceRaw = priceEl?.value;
+    const price = priceRaw === "" ? null : parseFloat(priceRaw);
+    const safePrice = Number.isFinite(price) ? price : null;
+
+    const category = catEl?.value?.trim() || "";
+
+    const supplier_id =
+      supplierSelect && supplierSelect.value
+        ? Number(supplierSelect.value)
+        : null;
+
+    const r = await api("/products", {
+      method: "POST",
+      body: JSON.stringify({
+        name,
+        quantity: safeQuantity,
+        price: safePrice,
+        category,
+        supplier_id,
+      }),
+    });
+
+    if (!r.ok) {
+      if (formMsg) {
+        formMsg.textContent = "Failed to add: " + (r.data?.error || r.status);
+        formMsg.hidden = false;
+      } else {
+        alert("Failed to add: " + (r.data?.error || r.status));
+      }
+      return;
+    }
+
+    // Clear form
+    if (nameEl) nameEl.value = "";
+    if (qtyEl) qtyEl.value = 1;
+    if (priceEl) priceEl.value = "";
+    if (catEl) catEl.value = "";
+
+    // Reload products to show the new one
+    await loadProducts();
   });
+}
 
-  // Check required fields before sending request
-  if (!name) {
-    formMsg.textContent = "Name is required";
-    formMsg.hidden = false;
-    return;
-  }
+// Refresh button (if present)
+if (refreshBtn) refreshBtn.addEventListener("click", loadProducts);
 
-  if (!ok) {
-    formMsg.textContent = "Failed to add: " + (data?.error || status);
-    formMsg.hidden = false;
-    return;
-  }
-
-  // Clear form
-  $("#name").value = "";
-  $("#quantity").value = 1;
-  $("#price").value = "";
-  $("#category").value = "";
-
-  // Reload products to show the new one
-  loadProducts();
-});
-
-refreshBtn.addEventListener("click", loadProducts);
-
-await loadSuppliers();
-loadProducts();
+// Startup --> Run loads in a small async function so this file works without type="module"
+(async function init() {
+  await loadSuppliers();
+  await loadProducts();
+})();
